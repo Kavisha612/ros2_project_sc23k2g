@@ -24,6 +24,7 @@ class colourIdentifier(Node):
         # Remember to initialise a CvBridge() and set up a subscriber to the image topic you wish to use
         # We covered which topic to subscribe to should you wish to receive image data
         self.bridge = CvBridge()
+        self.sensitivity = 10
         self.subscription = self.create_subscription(Image, '/camera/image_raw', self.callback, 10)
         self.subscription  # prevent unused variable warning
 
@@ -39,24 +40,48 @@ class colourIdentifier(Node):
         # Set the upper and lower bounds for the two colours you wish to identify
         hsv_green_lower = np.array([60 - self.sensitivity, 100, 100])
         hsv_green_upper = np.array([60 + self.sensitivity, 255, 255])
+        # Allows ranges of green  (50 - 70)
+        hsv_blue_lower = np.array([120 - self.sensitivity, 100, 100])
+        hsv_blue_upper = np.array([120 + self.sensitivity, 255, 255])
+        
+        hsv_red1_lower = np.array([0, 100, 100])
+        hsv_red1_upper = np.array([0 + self.sensitivity, 255, 255])
+        
+        hsv_red2_lower = np.array([180 - self.sensitivity, 100, 100])
+        hsv_red2_upper = np.array([180, 255, 255])
+        
+        
+        
+        # red range - wraps around so needs to be 0 - 10 AND 170 - 180
 
         # Convert the rgb image into a hsv image
-        Hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
         # Filter out everything but particular colours using the cv2.inRange() method
         # Do this for each colour
-
-
+        green_mask = cv2.inRange(hsv_image, hsv_green_lower, hsv_green_upper)
+        blue_mask = cv2.inRange(hsv_image, hsv_blue_lower, hsv_blue_upper)
+        red1_mask = cv2.inRange(hsv_image, hsv_red1_lower, hsv_red1_upper)
+        red2_mask = cv2.inRange(hsv_image, hsv_red2_lower, hsv_red2_upper)
         # To combine the masks you should use the cv2.bitwise_or() method
         # You can only bitwise_or two images at once, so multiple calls are necessary for more than two colours
 
+        
+        # combine red masks
+        red_mask = cv2.bitwise_or(red1_mask, red2_mask)
+        
+        # add in blue
+        combined1 = cv2.bitewise_or(red_mask, blue_mask)
+        
+        # add in green
+        combined = cv2.bitwise_or(combined1, green_mask)
+        
 
         # Apply the mask to the original image using the cv2.bitwise_and() method
         # As mentioned on the worksheet the best way to do this is to...
         #bitwise and an image with itself and pass the mask to the mask parameter (rgb_image,rgb_image, mask=mask)
         # As opposed to performing a bitwise_and on the mask and the image.
-
-
+        filtered_image = cv2.bitwise_and(hsv_image, hsv_image, mask = combines)
 
         #Show the resultant images you have created. You can show all of them or just the end result if you wish to.
 
