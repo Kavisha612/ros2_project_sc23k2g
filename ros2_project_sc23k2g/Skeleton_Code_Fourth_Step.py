@@ -10,6 +10,9 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist, Vector3
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
+from nav2_msgs.action import NavigateToPose
+from rclpy.action import ActionClient
+from math import sin, cos
 from rclpy.exceptions import ROSInterruptException
 import signal
 
@@ -30,9 +33,12 @@ class Robot(Node):
         self.blue_detected = False
         self.task_complete = False
         self.blue_contour_detected = False
-     
-        # We covered which topic to subscribe to should you wish to receive image data
-
+        
+        # Action client to send navigation goals to Nav2
+        self.nav_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
+    
+    
+    
     def callback(self, data):
 
         try: #incase image conversion is corrupted
@@ -136,6 +142,19 @@ class Robot(Node):
         # Use what you learnt in lab 3 to make the robot stop
         desired_velocity = Twist()  # all zeros by default = stop
         self.publisher.publish(desired_velocity)
+        
+    def go_to_waypoint(self, x, y, yaw=0.0):
+        # Build the goal message
+        goal = NavigateToPose.Goal()
+        goal.pose.header.frame_id = 'map'
+        goal.pose.pose.position.x = float(x)
+        goal.pose.pose.position.y = float(y)
+        goal.pose.pose.orientation.z = sin(yaw / 2)
+        goal.pose.pose.orientation.w = cos(yaw / 2)
+        
+        # Wait for Nav2 to be ready then send goal
+        self.nav_client.wait_for_server()
+        self.nav_client.send_goal_async(goal)
 
 # Create a node of your class in the main and ensure it stays up and running
 # handling exceptions and such
